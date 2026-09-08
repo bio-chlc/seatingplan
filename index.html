@@ -23,7 +23,7 @@
 
   <!-- Main Application Script -->
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useRef } = React;
 
     const Icon = ({ name, className = "w-4 h-4" }) => {
       useEffect(() => {
@@ -83,6 +83,76 @@
       });
 
       const [alertMsg, setAlertMsg] = useState(null);
+
+      const fileInputRef = useRef(null);
+
+      // Save complete current state to a JSON file
+      const savePlanToJSON = () => {
+        const saveData = {
+          version: '1.0',
+          timestamp: new Date().toISOString(),
+          rows,
+          cols,
+          groupSize,
+          oddAisleAlignment,
+          teacherBenchPos,
+          showCoordinates,
+          seatStatuses,
+          students,
+          seatingPlan,
+          arrangeMode,
+          chronoDirection,
+          chronoPattern,
+          customReqs
+        };
+
+        const blob = new Blob([JSON.stringify(saveData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Seating_Plan_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        showAlert('Seating plan saved to local file successfully!', 'success');
+      };
+
+      // Load state back from a selected JSON file
+      const loadPlanFromJSON = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const parsed = JSON.parse(e.target.result);
+            if (parsed.students && Array.isArray(parsed.students)) {
+              if (parsed.rows) setRows(parsed.rows);
+              if (parsed.cols) setCols(parsed.cols);
+              if (parsed.groupSize) setGroupSize(parsed.groupSize);
+              if (parsed.oddAisleAlignment) setOddAisleAlignment(parsed.oddAisleAlignment);
+              if (parsed.teacherBenchPos) setTeacherBenchPos(parsed.teacherBenchPos);
+              if (typeof parsed.showCoordinates === 'boolean') setShowCoordinates(parsed.showCoordinates);
+              if (parsed.seatStatuses) setSeatStatuses(parsed.seatStatuses);
+              if (parsed.students) setStudents(parsed.students);
+              if (parsed.seatingPlan) setSeatingPlan(parsed.seatingPlan);
+              if (parsed.arrangeMode) setArrangeMode(parsed.arrangeMode);
+              if (parsed.chronoDirection) setChronoDirection(parsed.chronoDirection);
+              if (parsed.chronoPattern) setChronoPattern(parsed.chronoPattern);
+              if (parsed.customReqs) setCustomReqs(parsed.customReqs);
+
+              showAlert('Seating plan & student data restored successfully!', 'success');
+            } else {
+              showAlert('Invalid backup file. Please select a valid seating plan JSON file.', 'error');
+            }
+          } catch (err) {
+            showAlert('Could not read JSON file format.', 'error');
+          }
+          event.target.value = '';
+        };
+        reader.readAsText(file);
+      };
 
       useEffect(() => {
         if (window.lucide) {
@@ -1181,6 +1251,33 @@
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2">
+                        {}
+                        <input
+                          type="file"
+                          accept=".json"
+                          ref={fileInputRef}
+                          onChange={loadPlanFromJSON}
+                          className="hidden"
+                        />
+
+                        <button
+                          onClick={savePlanToJSON}
+                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-xl transition flex items-center space-x-1.5 shadow-sm"
+                          title="Save current seating arrangement & student data to a local file"
+                        >
+                          <Icon name="download" className="w-3.5 h-3.5" />
+                          <span>Save Plan (JSON)</span>
+                        </button>
+
+                        <button
+                          onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                          className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-xl transition flex items-center space-x-1.5 shadow-sm"
+                          title="Upload and restore a previously saved seating plan file"
+                        >
+                          <Icon name="upload" className="w-3.5 h-3.5" />
+                          <span>Load Plan (JSON)</span>
+                        </button>
+
                         <button
                           onClick={exportAsDoc}
                           className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-xl transition flex items-center space-x-1.5 border border-blue-200"
